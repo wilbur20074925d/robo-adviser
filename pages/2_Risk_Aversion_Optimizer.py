@@ -3,21 +3,46 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as opt 
-
+import plotly.express as px
+import plotly.graph_objects as go
 st.set_page_config(page_title="Optimal Portfolio Based on Risk Aversion", layout="wide")
 st.title(" Optimal Portfolio Calculator – Risk Aversion-Based")
+def simulate_portfolios(mean_returns, cov_matrix, n_portfolios=5000, allow_short=False):
+    np.random.seed(42)
+    n_assets = len(mean_returns)
+    results = np.zeros((3, n_portfolios))
 
-st.markdown("""
-This tool computes your optimal portfolio based on your risk aversion level using the utility function:
+    for i in range(n_portfolios):
+        weights = np.random.randn(n_assets) if allow_short else np.random.rand(n_assets)
+        weights /= np.sum(np.abs(weights)) if allow_short else np.sum(weights)
+        port_return = np.dot(weights, mean_returns)
+        port_std = np.sqrt(weights.T @ cov_matrix @ weights)
+        results[0, i] = port_std
+        results[1, i] = port_return
+        results[2, i] = (port_return - 0.02) / port_std  # Sharpe Ratio with rf = 2%
+    return results
+st.markdown(r"""
+### Optimal Portfolio Selection Based on Risk Aversion
 
-\[
+This tool helps you determine your **optimal portfolio allocation** based on your individual **risk aversion level**, using the following utility maximization function:
+
+$$
 U = r - \frac{A \cdot \sigma^2}{2}
-\]
+$$
 
 Where:
-- \( r \) = expected portfolio return  
-- \( \sigma^2 \) = portfolio variance  
-- \( A \) = risk aversion coefficient
+
+- $U$ represents the **investor's utility** — a measure of satisfaction with a given risk-return trade-off  
+- $r$ is the **expected return** of the portfolio  
+- $\sigma^2$ is the **variance** of the portfolio (i.e., risk squared)  
+- $A$ is the **risk aversion coefficient**, a positive number that reflects how much you dislike risk
+
+---
+
+This model assumes that you prefer **higher returns** and **lower risk**. The optimal portfolio is selected by maximizing your utility value $U$ given your personal risk tolerance.  
+A **higher $A$** implies greater sensitivity to risk, leading to more conservative portfolios. Conversely, a **lower $A$** results in a more aggressive investment allocation.
+
+Please adjust your risk aversion level using the slider below to see how your optimal weights change accordingly.
 """)
 
 # Initialize session state to store history
@@ -30,7 +55,7 @@ uploaded_file = st.file_uploader("Upload bond ETF daily price CSV (same format a
 # Questionnaire inputs
 allow_short = st.toggle("Allow Short Sales in Optimal Portfolio?", value=True)
 
-st.header("📋 Investor Questionnaire")
+st.header(" Investor Questionnaire")
 Q1 = st.slider("1. How would you react if your portfolio dropped 10% in a month?", 1, 10, 5,
                help="1 = Panic and sell all, 10 = Stay calm or buy more")
 Q2 = st.slider("2. What type of return are you aiming for?", 1, 10, 5,
@@ -127,60 +152,235 @@ if uploaded_file and st.button("Calculate Optimal Portfolio"):
         'Utility': utility
     })
 
-    # Display results
+    # ---- Optimal Portfolio Output ----
     st.markdown("---")
-    st.subheader("Optimal Portfolio Based on Your Risk Aversion")
+    st.markdown("### Optimal Portfolio Based on Your Risk Aversion")
 
+    # Prepare weights table
     weights_df = pd.DataFrame({
         'Fund': mean_returns.index,
         'Weight': optimal_weights.flatten()
     }).set_index("Fund")
 
+    # Split layout: table + pie chart
     col1, col2 = st.columns([1, 1.2])
 
+    # ---- Column 1: Weights Table ----
     with col1:
-        st.dataframe(weights_df.style.format("{:.2%}"))
+        st.dataframe(weights_df.style.format("{:.2%}"), use_container_width=True)
 
+    # ---- Column 2: Interactive Pie Chart ----
     with col2:
         if (weights_df["Weight"] < 0).any():
             st.warning("Your optimal portfolio includes short positions. Negative weights are excluded from the pie chart.")
 
+        # Only non-negative and meaningful weights
         weights_nonneg = weights_df.copy()
         weights_nonneg["Weight"] = weights_nonneg["Weight"].clip(lower=0)
+        plot_df = weights_nonneg[weights_nonneg["Weight"] > 0.01]
 
-        # Filter out negligible weights for better display
-        plot_df = weights_nonneg[weights_nonneg["Weight"] > 0.01]  # skip <1% weights
-
-        # Handle edge case: all weights too small
         if plot_df.empty:
-            st.warning("No positive weights to display in pie chart.")
+            st.warning("No positive weights above 1% to display in pie chart.")
         else:
-            fig, ax = plt.subplots()
-            wedges, texts, autotexts = ax.pie(
-                plot_df["Weight"],
-                labels=plot_df.index,
-                autopct='%1.1f%%',
-                startangle=90,
-                textprops={'fontsize': 8}
+            fig_pie = px.pie(
+                plot_df.reset_index(),
+                names="Fund",
+                values="Weight",
+                title="Portfolio Allocation (Non-Negative Weights Only)",
+                color_discrete_sequence=px.colors.sequential.Blues
             )
-            for text in texts + autotexts:
-                text.set_fontweight('bold')
-            ax.axis('equal')
-            st.pyplot(fig)
-
+            fig_pie.update_traces(textinfo='percent+label', pull=[0.03]*len(plot_df))
+            fig_pie.update_layout(
+                height=400,
+                margin=dict(t=50, b=40, l=40, r=40),
+                showlegend=True
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
     st.markdown(f"""
     - **Expected Return**: {port_return:.2%}  
     - **Portfolio Volatility**: {np.sqrt(port_var):.2%}  
     - **Utility Score (U)**: {utility:.4f}
     """)
 
+    # Define a range of A values draw the graph
+    A_values = np.linspace(0.1, 10, 100)  # Risk aversion from 0.1 to 10
+    U_values = [port_return - (A * port_var / 2) for A in A_values]
+
+    # Build DataFrame for plotting
+    utility_df = pd.DataFrame({
+        "Risk Aversion (A)": A_values,
+        "Utility Score (U)": U_values
+    })
+
+    # Create Plotly line chart
+    fig_utility = px.line(
+        utility_df,
+        x="Risk Aversion (A)",
+        y="Utility Score (U)",
+        title="Utility Score vs. Risk Aversion Level",
+        markers=True
+    )
+
+    fig_utility.update_layout(
+        xaxis_title="Risk Aversion Coefficient (A)",
+        yaxis_title="Utility Score (U)",
+        template="plotly_white",
+        height=400,
+        margin=dict(l=40, r=40, t=60, b=40)
+    )
+
+    # Display the plot
+    st.plotly_chart(fig_utility, use_container_width=True)
+    # Portfolio Return vs Volatility (σ), fixed A
+    # -- Volatility range
+    sigma_range = np.linspace(0.01, 0.5, 100)
+
+    # -- Live interactive UI block
+    with st.container():
+        risk_aversion = A
+
+        # Recalculate U for each sigma
+        U_curve = [port_return - (risk_aversion * sigma**2 / 2) for sigma in sigma_range]
+
+        fig_risk = px.line(
+            x=sigma_range,
+            y=U_curve,
+            labels={"x": "Portfolio Volatility (σ)", "y": "Utility Score (U)"},
+            title=f"Utility vs. Volatility (A = {risk_aversion:.1f})"
+        )
+
+        fig_risk.update_layout(
+            template="plotly_white",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+
+        st.plotly_chart(fig_risk, use_container_width=True)
+
+    
+    # 1. Efficient Frontier with Utility Contours (Contour Plot)
+    # Simulated grid for standard deviation (σ) and return (r)
+    sigma_vals = np.linspace(0.01, 0.4, 100)
+    return_vals = np.linspace(0, 0.2, 100)
+    Sigma, R = np.meshgrid(sigma_vals, return_vals)
+
+    # Utility surface for current A
+    U_grid = R - (risk_aversion * Sigma**2) / 2
+
+    # Create contour plot
+    fig_contour = go.Figure(data=go.Contour(
+        z=U_grid,
+        x=sigma_vals,
+        y=return_vals,
+        colorscale='Viridis',
+        contours=dict(showlabels=True),
+        colorbar=dict(title='Utility (U)'),
+    ))
+
+    fig_contour.update_layout(
+        title=f"Utility Contour Map (A = {risk_aversion})",
+        xaxis_title="Volatility (σ)",
+        yaxis_title="Expected Return (r)",
+        height=500,
+        template="plotly_white"
+    )
+
+    st.plotly_chart(fig_contour, use_container_width=True)
+    #2. Risk-Return Scatter Plot with Utility-Based Sizing
+
+    # Compute utility for each portfolio
+    results_short = simulate_portfolios(mean_returns, cov_matrix, allow_short=True)
+    utility_all = results_short[1] - (risk_aversion * results_short[0]**2 / 2)
+
+    df_bubble = pd.DataFrame({
+        "Risk": results_short[0],
+        "Return": results_short[1],
+        "Sharpe": results_short[2],
+        "Utility": utility_all
+    })
+
+    df_bubble["Utility Size"] = df_bubble["Utility"] - df_bubble["Utility"].min()
+    df_bubble["Utility Size"] /= df_bubble["Utility Size"].max()
+    df_bubble["Utility Size"] = df_bubble["Utility Size"].clip(lower=0.05) * 40  # scale up
+
+    fig_bubble = px.scatter(
+        df_bubble,
+        x="Risk",
+        y="Return",
+        size="Utility Size",
+        color="Sharpe",
+        color_continuous_scale="Viridis",
+        title=" Normalized Utility Sizing of Portfolios",
+        labels={"Sharpe": "Sharpe Ratio"}
+    )
+
+    fig_bubble.update_layout(template="plotly_white", height=600)
+    st.plotly_chart(fig_bubble, use_container_width=True)
+
+    #3. Risk Aversion Slider Trace (Live Trace of Utility vs A)
+    A_range = np.linspace(0.1, 10, 100)
+    U_trace = [port_return - (A * port_var / 2) for A in A_range]
+
+    fig_trace = px.line(
+        x=A_range,
+        y=U_trace,
+        labels={"x": "Risk Aversion (A)", "y": "Utility (U)"},
+        title="Utility Score vs. Risk Aversion for Fixed Portfolio"
+    )
+
+    fig_trace.update_traces(mode="lines+markers")
+    fig_trace.update_layout(template="plotly_white", height=400)
+    st.plotly_chart(fig_trace, use_container_width=True)
+
+
+
+
+
+
+
+
 # Always show history at the bottom
-if st.session_state.history:
+if st.session_state.get("history"):
     st.markdown("---")
-    st.subheader("Session History of Calculations")
+    st.markdown("### Session History of Calculations")
+
+    # Convert session history to DataFrame
     history_df = pd.DataFrame(st.session_state.history)
-    st.dataframe(history_df.style.format({
-        "Expected Return": "{:.2%}",
-        "Volatility": "{:.2%}",
-        "Utility": "{:.4f}"
-    }))
+
+    # Display styled table
+    col1, col2, col3 = st.columns([0.2, 1.6, 0.2])
+    with col2:
+        st.dataframe(
+            history_df.style.format({
+                "Expected Return": "{:.2%}",
+                "Volatility": "{:.2%}",
+                "Utility": "{:.4f}"
+            }),
+            use_container_width=True
+        )
+
+    # Optional: plot only if 2+ data points
+    if len(history_df) > 1:
+        st.markdown("### Utility and Risk Evolution Over Time")
+
+        # Add step count or timestamp
+        history_df["Step"] = range(1, len(history_df)+1)
+
+        # Create interactive line plot
+        fig_history = px.line(
+            history_df,
+            x="Step",
+            y=["Expected Return", "Volatility", "Utility"],
+            markers=True,
+            title="Metric Trends Across User Inputs",
+            labels={"value": "Metric Value", "Step": "Interaction Step", "variable": "Metric"},
+        )
+
+        fig_history.update_layout(
+            template="plotly_white",
+            height=500,
+            legend_title="Metric",
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+
+        st.plotly_chart(fig_history, use_container_width=True)
