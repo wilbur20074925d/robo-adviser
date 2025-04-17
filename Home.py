@@ -1,15 +1,24 @@
 import streamlit as st
 
+# ---- Page Configuration ----
 st.set_page_config(page_title="Bond Robo-Adviser Portal", layout="centered")
 
-st.title(" Welcome to Bond Robo-Adviser Platform")
+# ---- Header ----
+st.title("Welcome to the Bond Robo-Adviser Platform")
 
+# ---- Introduction Text ----
 st.markdown("""
-Welcome to your academic robo-adviser!  
-This platform includes:
+Welcome to your **academic robo-adviser** — a smart tool to help you explore and understand optimal portfolio construction using bond ETFs.
 
--  **Part 1**: Efficient Frontier Visualizer
--  **Part 2**: Risk Aversion Portfolio Optimizer
+This platform offers two interactive modules:
 
- Use the sidebar on the left to switch between modules.
+### 🔹 Part 1: Efficient Frontier Visualizer  
+Explore thousands of simulated portfolios, visualize the efficient frontier, and understand the trade-off between risk and return.
+
+### 🔹 Part 2: Risk Aversion Portfolio Optimizer  
+Input your personal risk aversion level to generate a customized optimal portfolio and track how your preferences affect expected return and utility.
+
+---
+
+Use the **sidebar** on the left to navigate between modules and begin your journey into portfolio optimization!
 """)
