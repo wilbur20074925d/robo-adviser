@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.optimize as opt 
 
 st.set_page_config(page_title="Optimal Portfolio Based on Risk Aversion", layout="wide")
 st.title("🧠 Optimal Portfolio Calculator – Risk Aversion-Based")
@@ -30,14 +31,40 @@ uploaded_file = st.file_uploader("📤 Upload bond ETF daily price CSV (same for
 allow_short = st.toggle("🟢 Allow Short Sales in Optimal Portfolio?", value=True)
 
 st.header("📋 Investor Questionnaire")
-q1 = st.slider("1. How would you feel if your portfolio lost 10% in a month?", 1, 10, 5)
-q2 = st.slider("2. How important is stable income over high returns?", 1, 10, 5)
-q3 = st.slider("3. How much market experience do you have?", 1, 10, 5)
-q4 = st.slider("4. Are you investing for long-term growth?", 1, 10, 5)
+Q1 = st.slider("1. How would you react if your portfolio dropped 10% in a month?", 1, 10, 5,
+               help="1 = Panic and sell all, 10 = Stay calm or buy more")
+Q2 = st.slider("2. What type of return are you aiming for?", 1, 10, 5,
+               help="1 = Stable low returns, 10 = Aggressive growth")
+Q3 = st.slider("3. Do you plan to use this money within the next 5 years?", 1, 10, 5,
+               help="1 = Yes definitely, 10 = No plans at all")
+Q4 = st.slider("4. What is your investment experience level?", 1, 10, 5,
+               help="1 = No experience, 10 = More than 10 years")
+Q5 = st.slider("5. How do you feel about day-to-day fluctuations in your portfolio?", 1, 10, 5,
+               help="1 = Anxious or stressed, 10 = Indifferent")
+Q6 = st.slider("6. What is your primary investment objective?", 1, 10, 5,
+               help="1 = Preserve capital, 10 = Maximize long-term capital gains")
 
-A = (q1 + q2 - q3 + (10 - q4)) / 4
-A = round(max(A, 0.1), 2)
+# Reverse-mapped scoring logic
+A_raw = (
+    0.25 * (10 - Q1) +
+    0.20 * (10 - Q2) +
+    0.15 * (10 - Q3) +
+    0.15 * (10 - Q4) +
+    0.15 * (10 - Q5) +
+    0.10 * (10 - Q6)
+)
+
+A = round(max(A_raw, 0.5), 2)
+# Optional: categorize risk profile
+if A >= 6:
+    profile = "Conservative"
+elif A >= 3:
+    profile = "Balanced"
+else:
+    profile = "Aggressive"
+
 st.markdown(f"### 🧮 Estimated Risk Aversion Coefficient: **A = {A}**")
+st.markdown(f"### 🧑‍💼 Risk Profile: **{profile}**")
 
 # Button to trigger calculation
 if uploaded_file and st.button("🔄 Calculate Optimal Portfolio"):
@@ -55,16 +82,36 @@ if uploaded_file and st.button("🔄 Calculate Optimal Portfolio"):
     mean_returns = returns.mean() * 252
     cov_matrix = returns.cov() * 252
 
-    # Calculate optimal weights
+    mean_vec = mean_returns.values  # keep for later reuse
     cov_inv = np.linalg.inv(cov_matrix.values)
-    mean_vec = mean_returns.values.reshape(-1, 1)
-    raw_weights = cov_inv @ mean_vec
+    mu = mean_vec
+    sigma = cov_matrix.values
+    n_assets = len(mu)
 
-    if allow_short:
-        optimal_weights = raw_weights / np.sum(np.abs(raw_weights))
+    # Objective: maximize U = w^T mu - 0.5 * A * w^T Σ w
+    def neg_utility(w, mu, sigma, A):
+        port_return = np.dot(w, mu)
+        port_var = np.dot(w.T, np.dot(sigma, w))
+        return -(port_return - 0.5 * A * port_var)  # minimize negative utility
+
+    # Constraints: sum(weights) == 1
+    constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
+
+    # Bounds: allow/disallow short sales
+    bounds = [(-1, 1)] * n_assets if allow_short else [(0, 1)] * n_assets
+
+    # Initial guess: equal weights
+    init_guess = np.ones(n_assets) / n_assets
+
+    # Optimization
+    result = opt.minimize(neg_utility, init_guess, args=(mu, sigma, A), method='SLSQP',
+                        bounds=bounds, constraints=constraints)
+
+    if result.success:
+        optimal_weights = result.x
     else:
-        raw_weights = np.maximum(raw_weights, 0)
-        optimal_weights = raw_weights / np.sum(raw_weights)
+        st.error("❌ Optimization failed.")
+        st.stop()
 
     # Portfolio metrics
     port_return = float(optimal_weights.T @ mean_vec)
@@ -101,10 +148,25 @@ if uploaded_file and st.button("🔄 Calculate Optimal Portfolio"):
         weights_nonneg = weights_df.copy()
         weights_nonneg["Weight"] = weights_nonneg["Weight"].clip(lower=0)
 
-        fig, ax = plt.subplots()
-        ax.pie(weights_nonneg['Weight'], labels=weights_nonneg.index, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')
-        st.pyplot(fig)
+        # Filter out negligible weights for better display
+        plot_df = weights_nonneg[weights_nonneg["Weight"] > 0.01]  # skip <1% weights
+
+        # Handle edge case: all weights too small
+        if plot_df.empty:
+            st.warning("No positive weights to display in pie chart.")
+        else:
+            fig, ax = plt.subplots()
+            wedges, texts, autotexts = ax.pie(
+                plot_df["Weight"],
+                labels=plot_df.index,
+                autopct='%1.1f%%',
+                startangle=90,
+                textprops={'fontsize': 8}
+            )
+            for text in texts + autotexts:
+                text.set_fontweight('bold')
+            ax.axis('equal')
+            st.pyplot(fig)
 
     st.markdown(f"""
     - **Expected Return**: {port_return:.2%}  
