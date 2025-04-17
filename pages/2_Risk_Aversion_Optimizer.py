@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import scipy.optimize as opt 
 
 st.set_page_config(page_title="Optimal Portfolio Based on Risk Aversion", layout="wide")
-st.title("🧠 Optimal Portfolio Calculator – Risk Aversion-Based")
+st.title(" Optimal Portfolio Calculator – Risk Aversion-Based")
 
 st.markdown("""
 This tool computes your optimal portfolio based on your risk aversion level using the utility function:
@@ -25,10 +25,10 @@ if 'history' not in st.session_state:
     st.session_state.history = []
 
 # Upload price data
-uploaded_file = st.file_uploader("📤 Upload bond ETF daily price CSV (same format as Part 1)", type=["csv"])
+uploaded_file = st.file_uploader("Upload bond ETF daily price CSV (same format as Part 1)", type=["csv"])
 
 # Questionnaire inputs
-allow_short = st.toggle("🟢 Allow Short Sales in Optimal Portfolio?", value=True)
+allow_short = st.toggle("Allow Short Sales in Optimal Portfolio?", value=True)
 
 st.header("📋 Investor Questionnaire")
 Q1 = st.slider("1. How would you react if your portfolio dropped 10% in a month?", 1, 10, 5,
@@ -63,18 +63,18 @@ elif A >= 3:
 else:
     profile = "Aggressive"
 
-st.markdown(f"### 🧮 Estimated Risk Aversion Coefficient: **A = {A}**")
-st.markdown(f"### 🧑‍💼 Risk Profile: **{profile}**")
+st.markdown(f"### Estimated Risk Aversion Coefficient: **A = {A}**")
+st.markdown(f"### Risk Profile: **{profile}**")
 
 # Button to trigger calculation
-if uploaded_file and st.button("🔄 Calculate Optimal Portfolio"):
+if uploaded_file and st.button("Calculate Optimal Portfolio"):
     # Load and clean data
     df = pd.read_csv(uploaded_file, parse_dates=["Date"], index_col="Date")
     df = df.dropna()
 
-    st.success("✅ File uploaded and processed successfully.")
+    st.success("File uploaded and processed successfully.")
 
-    st.subheader("📊 Sample of Uploaded Data")
+    st.subheader("Sample of Uploaded Data")
     st.dataframe(df.head())
 
     # Portfolio statistics
@@ -110,7 +110,7 @@ if uploaded_file and st.button("🔄 Calculate Optimal Portfolio"):
     if result.success:
         optimal_weights = result.x
     else:
-        st.error("❌ Optimization failed.")
+        st.error("Optimization failed.")
         st.stop()
 
     # Portfolio metrics
@@ -129,7 +129,7 @@ if uploaded_file and st.button("🔄 Calculate Optimal Portfolio"):
 
     # Display results
     st.markdown("---")
-    st.subheader("📊 Optimal Portfolio Based on Your Risk Aversion")
+    st.subheader("Optimal Portfolio Based on Your Risk Aversion")
 
     weights_df = pd.DataFrame({
         'Fund': mean_returns.index,
@@ -143,7 +143,7 @@ if uploaded_file and st.button("🔄 Calculate Optimal Portfolio"):
 
     with col2:
         if (weights_df["Weight"] < 0).any():
-            st.warning("⚠️ Your optimal portfolio includes short positions. Negative weights are excluded from the pie chart.")
+            st.warning("Your optimal portfolio includes short positions. Negative weights are excluded from the pie chart.")
 
         weights_nonneg = weights_df.copy()
         weights_nonneg["Weight"] = weights_nonneg["Weight"].clip(lower=0)
@@ -177,7 +177,7 @@ if uploaded_file and st.button("🔄 Calculate Optimal Portfolio"):
 # Always show history at the bottom
 if st.session_state.history:
     st.markdown("---")
-    st.subheader("📜 Session History of Calculations")
+    st.subheader("Session History of Calculations")
     history_df = pd.DataFrame(st.session_state.history)
     st.dataframe(history_df.style.format({
         "Expected Return": "{:.2%}",
