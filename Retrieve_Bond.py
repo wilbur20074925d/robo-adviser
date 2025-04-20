@@ -14,6 +14,8 @@ for ticker in bond_tickers:
     try:
         data = yf.Ticker(ticker).history(period="10y", interval="1d")
         if not data.empty:
+            print(data)
+            input()
             bond_data[ticker] = data['Close']
         else:
             print(f"No data returned for {ticker}. Skipping.")
@@ -27,7 +29,7 @@ bond_prices_df = pd.DataFrame(bond_data)
 bond_prices_df.dropna(inplace=True)
 
 # Save to CSV
-output_path = "bond_etf_10yr_prices.csv"
+output_path = "bond_etf_10yr_prices3.csv"
 bond_prices_df.to_csv(output_path)
 
 print(f"\n✅ Saved 10-year monthly data to: {output_path}")
