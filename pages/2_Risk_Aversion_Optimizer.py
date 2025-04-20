@@ -6,7 +6,7 @@ import scipy.optimize as opt
 import plotly.express as px
 import plotly.graph_objects as go
 st.set_page_config(page_title="Optimal Portfolio Based on Risk Aversion", layout="wide")
-st.title(" Optimal Portfolio Calculator – Risk Aversion-Based")
+st.title(" Optimal Portfolio Calculator - Risk Aversion-Based")
 def simulate_portfolios(mean_returns, cov_matrix, n_portfolios=5000, allow_short=False):
     np.random.seed(42)
     n_assets = len(mean_returns)
@@ -50,7 +50,7 @@ if 'history' not in st.session_state:
     st.session_state.history = []
 
 # Upload price data
-uploaded_file = st.file_uploader("Upload bond ETF daily price CSV (same format as Part 1)", type=["csv"])
+uploaded_file = st.file_uploader("Upload ETF daily price CSV (same format as Part 1)", type=["csv"])
 
 # Questionnaire inputs
 allow_short = st.toggle("Allow Short Sales in Optimal Portfolio?", value=True)

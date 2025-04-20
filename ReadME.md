@@ -1,11 +1,11 @@
-# 📊 Bond Robo-Adviser Platform
+# 📊 ETF Robo-Adviser Platform
 
 This is a two-part Streamlit web application designed for academic portfolio analysis and optimization.
 
 ## 🚀 Features
 
 ### 🧩 Part 1: Efficient Frontier Analyzer
-- Upload bond ETF price data
+- Upload ETF price data
 - Calculate annualized returns, volatility, Sharpe Ratio
 - Visualize efficient frontier (with and without short sales)
 - Plot Global Minimum Variance Portfolio (GMVP)
