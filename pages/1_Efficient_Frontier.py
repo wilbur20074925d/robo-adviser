@@ -98,42 +98,6 @@ if uploaded_file and risk_free_rate:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.dataframe(cov_matrix.style.format("{:.6f}"), use_container_width=True)
-        
-    # ---- Descriptive Statistics Chart (Interactive) ----
-    # st.markdown("### Visual Summary of Portfolio Statistics")
-
-    # # Prepare data for plotting
-    # stats_df_reset = stats_df.reset_index().rename(columns={"index": "Fund"})
-    # stats_melted = stats_df_reset.melt(id_vars="Fund", var_name="Metric", value_name="Value")
-
-    # # Plot grouped bar chart
-    # fig_stats = px.bar(
-    #     stats_melted,
-    #     x="Fund",
-    #     y="Value",
-    #     color="Metric",
-    #     barmode="group",
-    #     text_auto=".4f",
-    #     labels={"Value": "Metric Value"},
-    #     title="Descriptive Statistics by Fund"
-    # )
-
-    # fig_stats.update_layout(
-    #     xaxis_title="Bond Fund",
-    #     yaxis_title="Value",
-    #     legend_title="Metric",
-    #     template="plotly_white",
-    #     height=500,
-    #     margin=dict(l=40, r=40, t=60, b=40)
-    # )
-
-    # # Show plot in Streamlit
-    # st.plotly_chart(fig_stats, use_container_width=True)
-
-    # ---- Cumulative Returns ----
-    # st.subheader("Cumulative Returns")
-    # cumulative = (1 + returns).cumprod()
-    # st.line_chart(cumulative)
 
     # ---- Correlation Heatmap ----
     st.subheader("Correlation Matrix")
@@ -181,36 +145,6 @@ if uploaded_file and risk_free_rate:
     st.markdown("### Sample of Daily Returns")
     st.dataframe(returns.head().style.format("{:.4f}"), use_container_width=True)
     # ---- Distribution of Daily Returns (Interactive Plotly Version) ----
-    # st.markdown("### Interactive Distribution of Daily Returns")
-
-    # Melt the returns DataFrame for long-form plotting
-    # returns_long = returns.reset_index().melt(id_vars="Date", var_name="Fund", value_name="Daily Return")
-
-
-    # Create KDE-style density plot using histogram with density normalization
-    # fig_kde_plotly = px.histogram(
-    #     returns_long,
-    #     x="Daily Return",
-    #     color="Fund",
-    #     marginal="rug",  # optional: add small tick marks
-    #     opacity=0.5,
-    #     nbins=100,
-    #     histnorm="density",
-    #     barmode="overlay",
-    #     title="Distribution of Daily Returns (Interactive View)"
-    # )
-
-    # fig_kde_plotly.update_layout(
-    #     template="plotly_white",
-    #     height=500,
-    #     xaxis_title="Daily Return",
-    #     yaxis_title="Density",
-    #     legend_title="Bond Fund",
-    #     margin=dict(l=40, r=40, t=60, b=40)
-    # )
-
-    # # Show plot in Streamlit
-    # st.plotly_chart(fig_kde_plotly, use_container_width=True)
     
     # ---- Portfolio Simulation Functions ----
     def simulate_portfolios(
@@ -415,16 +349,6 @@ if uploaded_file and risk_free_rate:
     # Display the chart in Streamlit
     st.plotly_chart(fig1, use_container_width=True)
 
-    # ---- Show top 10 efficient frontier points (centered) ----
-    # st.markdown("###  Efficient Frontier Data (With Short Sales)")
-
-    # # Use columns to center the dataframe
-    # col1, col2, col3 = st.columns([1, 2, 1])
-    # with col2:
-    #     st.dataframe(
-    #         frontier_short.head(10).style.format({"std": "{:.4f}", "ret": "{:.4f}"}),
-    #         use_container_width=True
-        # )
     # ---- Frontier WITHOUT Short Sales (Interactive) ----
     st.markdown("### Efficient Frontier (Without Short Sales)")
 
@@ -530,16 +454,89 @@ if uploaded_file and risk_free_rate:
 
     # Display in Streamlit
     st.plotly_chart(fig2, use_container_width=True)
+    
+    # ---- Tangency Portfolio ----
+    st.markdown("### Tangency Portfolio Weights")
 
-    # ---- Show top 10 efficient frontier points WITHOUT short sales (centered) ----
-    # st.markdown("###  Efficient Frontier Data (Without Short Sales)")
+    print(mean_returns.index)
+    print(weights_short[max_idx_short])
+    print(weights_noshort[max_idx_noshort])
+    col4, col5, col6 = st.columns([1, 2, 1])
+    with col5:
+        tan_df = pd.DataFrame({
+            "Fund": mean_returns.index,
+            "Tangency Portfolio Weight (With short)": weights_short[max_idx_short],
+            "Tangency Portfolio Weight (Without short)": weights_noshort[max_idx_noshort]
+        })
+        st.dataframe(
+            tan_df.set_index("Fund").style.format("{:.4%}"),
+            use_container_width=True
+        )
+    # ---- Tangency Portfolio Weights Chart (Advanced) ----
+    # Convert and sort Tangency Portfolio weights
+    tan_df["Tangency Portfolio Weight With Short (%)"] = tan_df["Tangency Portfolio Weight (With short)"] * 100
+    tan_df_sorted = tan_df.sort_values(by="Tangency Portfolio Weight With Short (%)", ascending=True)
 
-    # col1, col2, col3 = st.columns([1, 2, 1])
-    # with col2:
-    #     st.dataframe(
-    #         frontier_noshort.head(10).style.format({"std": "{:.4f}", "ret": "{:.4f}"}),
-    #         use_container_width=True
-    #     )
+    #  Plot Tangency Portfolio weight distribution (horizontal bar chart)
+    fig_weights = px.bar(
+        tan_df_sorted,
+        x="Tangency Portfolio Weight With Short (%)",
+        y="Fund",
+        orientation="h",
+        text="Tangency Portfolio Weight With Short (%)",
+        color="Tangency Portfolio Weight With Short (%)",
+        color_continuous_scale="Blues",
+        labels={"Tangency Portfolio Weight With Short (%)": "Weight (%)", "Fund": "ETF"},
+        title="Tangency Portfolio Weight Distribution With Short"
+    )
+
+    fig_weights.update_traces(
+        texttemplate='%{text:.2f}%', 
+        textposition='outside'
+    )
+
+    fig_weights.update_layout(
+        xaxis_title="Weight (%)",
+        yaxis_title="",
+        coloraxis_showscale=False,
+        height=500,
+        margin=dict(l=100, r=40, t=60, b=40)
+    )
+
+    st.plotly_chart(fig_weights, use_container_width=True)
+    
+    
+    # Convert and sort Tangency Portfolio weights
+    tan_df["Tangency Portfolio Weight Without Short (%)"] = tan_df["Tangency Portfolio Weight (Without short)"] * 100
+    tan_df_sorted = tan_df.sort_values(by="Tangency Portfolio Weight Without Short (%)", ascending=True)
+
+    #  Plot Tangency Portfolio weight distribution (horizontal bar chart)
+    fig_weights = px.bar(
+        tan_df_sorted,
+        x="Tangency Portfolio Weight Without Short (%)",
+        y="Fund",
+        orientation="h",
+        text="Tangency Portfolio Weight Without Short (%)",
+        color="Tangency Portfolio Weight Without Short (%)",
+        color_continuous_scale="Blues",
+        labels={"Tangency Portfolio Weight Without Short (%)": "Weight (%)", "Fund": "ETF"},
+        title="Tangency Portfolio Weight Distribution Without Short"
+    )
+
+    fig_weights.update_traces(
+        texttemplate='%{text:.2f}%', 
+        textposition='outside'
+    )
+
+    fig_weights.update_layout(
+        xaxis_title="Weight (%)",
+        yaxis_title="",
+        coloraxis_showscale=False,
+        height=500,
+        margin=dict(l=100, r=40, t=60, b=40)
+    )
+
+    st.plotly_chart(fig_weights, use_container_width=True)
 
     # ---- GMVP Weights (centered) ----
     st.markdown("### Global Minimum Variance Portfolio (GMVP) Weights")

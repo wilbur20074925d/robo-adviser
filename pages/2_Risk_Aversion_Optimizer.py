@@ -123,7 +123,7 @@ if uploaded_file and st.button("Calculate Optimal Portfolio"):
     constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
 
     # Bounds: allow/disallow short sales
-    bounds = [(-1, 1)] * n_assets if allow_short else [(0, 1)] * n_assets
+    bounds = [(-0.3, 0.3)] * n_assets if allow_short else [(0, 0.3)] * n_assets
 
     # Initial guess: equal weights
     init_guess = np.ones(n_assets) / n_assets
