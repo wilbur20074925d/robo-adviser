@@ -1,5 +1,5 @@
 
-# Robo-Adviser: Bond ETF Portfolio Optimization Platform
+# BMD5302 Group Project Robo-Adviser: ETF Portfolio Optimization Platform
 
 This Streamlit-based web application is developed for academic purposes as part of the BMD5302 Financial Modeling course. The tool enables users to explore investment portfolio theory, visualize efficient frontiers, and generate optimal bond ETF allocations based on personalized risk preferences.
 
@@ -18,7 +18,12 @@ This application is deployed and accessible via Streamlit Cloud:
 🔗 **[Launch the Robo-Adviser App](https://robo-adviser-ee.streamlit.app/Risk_Aversion_Optimizer)**
 
 ---
----
+## Team Members
+- WANG Xinyu
+- YANG Yuebo
+- ZENG Rui
+- ZHOU Lingxiang
+
 ## Features
 
 - Upload real-world bond ETF price data
@@ -109,12 +114,6 @@ This module helps investors find an optimal portfolio that maximizes their utili
 
 - A behavioral questionnaire (6 questions)
 - Calculation of a **risk aversion coefficient (A)** based on responses
-- Application of the utility function:
-
-\[
-U(w) = w^T \mu - rac{A}{2} w^T \Sigma w
-\]
-
 - Portfolio optimization (with or without short sales)
 - Output of:
   - Expected return
@@ -140,8 +139,123 @@ You can use any historical bond ETF dataset or download from Yahoo Finance. Exam
 - The optimization methods used are simplified and may not reflect real-world constraints.
 - Consider extending the platform with backtesting, ESG filtering, and rebalancing simulation.
 
+
 ---
 
+## Calculation Methodology
+
+This section outlines the theoretical foundations and mathematical formulas employed in the two components of the Robo-Adviser platform: the Efficient Frontier construction based on Modern Portfolio Theory (Part 01), and the utility-maximizing optimal portfolio generation based on investor risk preferences (Part 02).
+
+---
+
+### Part 01: Efficient Frontier – Modern Portfolio Theory (MPT)
+
+The efficient frontier represents the set of optimal portfolios offering the highest expected return for a given level of risk. The analysis assumes asset returns are normally distributed and that investors seek to maximize return while minimizing risk, measured by variance.
+
+Given a portfolio of $ n $ assets:
+
+- Let $ \mu \in \mathbb{R}^n $ be the vector of expected annualized returns
+- Let $ \Sigma \in \mathbb{R}^{n \times n} $ be the covariance matrix of asset returns
+- Let $ w \in \mathbb{R}^n $ be the portfolio weights such that $ \sum w_i = 1 $
+
+The core calculations are as follows:
+
+#### Portfolio Expected Return
+
+
+$$\mu_p = w^\top \mu$$
+
+
+#### Portfolio Risk (Volatility)
+
+
+$$\sigma_p = \sqrt{w^\top \Sigma w}$$
+
+
+#### Sharpe Ratio
+
+Assuming a constant risk-free rate $ r_f $, the Sharpe ratio is:
+
+
+$$\text{Sharpe Ratio} = \frac{\mu_p - r_f}{\sigma_p}$$
+
+
+#### Global Minimum Variance Portfolio (GMVP)
+
+The GMVP minimizes portfolio variance irrespective of return preferences. Its closed-form solution is:
+
+
+$$w_{GMVP} = \frac{\Sigma^{-1} \mathbf{1}}{\mathbf{1}^\top \Sigma^{-1} \mathbf{1}}$$
+
+
+Where $ \mathbf{1} $ is a vector of ones.
+
+#### Efficient Frontier Construction
+
+To construct the frontier, we simulate thousands of random portfolios under:
+
+- **Short-sales allowed**: $ w_i \in \mathbb{R} $, $ \sum w_i = 1 $
+- **Short-sales disallowed**: $ w_i \geq 0 $, $ \sum w_i = 1 $
+
+The frontier is the upper envelope of portfolios with the highest return for a given level of risk. We also identify the **Tangency Portfolio** as the point with the maximum Sharpe ratio.
+
+---
+
+### Part 02: Utility-Based Optimal Portfolio – Risk Aversion Optimization
+
+This section adopts a **mean-variance utility function** to compute the investor's optimal portfolio, conditioned on a subjective **risk aversion score \( A \)**. This framework assumes that the investor's utility increases with expected return and decreases with variance.
+
+#### Utility Function
+
+
+$$U(w) = w^\top \mu - \frac{A}{2} w^\top \Sigma w$$
+
+
+Where:
+
+- $ \mu $: vector of expected returns
+- $ \Sigma $: covariance matrix of returns
+- $ A $: investor-specific risk aversion coefficient
+
+#### Optimal Weights
+
+If short selling is allowed, the optimal weights are proportional to the excess expected return scaled by risk:
+
+
+$$w^* = \frac{\Sigma^{-1} \mu}{\sum |\Sigma^{-1} \mu|}$$
+
+
+If short selling is disallowed, all negative values in $ w^* $ are clipped to zero, and the remaining weights are normalized:
+
+
+$$w^* = \frac{\max(0, \Sigma^{-1} \mu)}{\sum \max(0, \Sigma^{-1} \mu)}$$
+
+
+#### Portfolio Metrics under Optimal Weights
+
+- **Expected Return**:
+
+
+$$\mu_p = w^{*\top} \mu$$
+
+
+- **Volatility**:
+
+
+$$\sigma_p = \sqrt{w^{*\top} \Sigma w^*}$$
+
+- **Utility Score**:
+
+
+$$U = \mu_p - \frac{A}{2} \sigma_p^2$$
+
+
+#### Risk Aversion Coefficient $ A $
+
+The value of $ A $ is determined via a six-question behavioral questionnaire. Higher values of $ A $ correspond to more risk-averse profiles. The platform allows users to experiment with different values of $ A $ to observe how optimal allocations shift with investor preferences.
+
+
+---
 ## License
 
 This project is intended for academic use only. Redistribution or commercial use is not permitted without explicit permission.
