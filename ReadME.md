@@ -252,7 +252,7 @@ $$U = \mu_p - \frac{A}{2} \sigma_p^2$$
 
 #### Risk Aversion Coefficient $A$
 
-The value of $ A $ is determined via a six-question behavioral questionnaire. Higher values of $A$ correspond to more risk-averse profiles. The platform allows users to experiment with different values of$ A$ to observe how optimal allocations shift with investor preferences.
+The value of $A$ is determined via a six-question behavioral questionnaire. Higher values of $A$ correspond to more risk-averse profiles. The platform allows users to experiment with different values of$A$ to observe how optimal allocations shift with investor preferences.
 
 
 ---
