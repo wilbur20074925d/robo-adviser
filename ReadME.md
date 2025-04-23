@@ -73,7 +73,7 @@ robo-adviser/
 
 ---
 
-## 📘 Module Details
+## Module Details
 
 ### Part 01: Efficient Frontier
 
