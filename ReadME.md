@@ -1,7 +1,7 @@
 
 # BMD5302 Group Project Robo-Adviser: ETF Portfolio Optimization Platform
 
-This Streamlit-based web application is developed for academic purposes as part of the BMD5302 Financial Modeling course. The tool enables users to explore investment portfolio theory, visualize efficient frontiers, and generate optimal bond ETF allocations based on personalized risk preferences.
+This Streamlit-based web application is developed for academic purposes as part of the BMD5302 Financial Modeling course. The tool enables users to explore investment portfolio theory, visualize efficient frontiers, and generate optimal ETF allocations based on personalized risk preferences.
 
 The project consists of two main modules:
 
@@ -26,7 +26,7 @@ This application is deployed and accessible via Streamlit Cloud:
 
 ## Features
 
-- Upload real-world bond ETF price data
+- Upload real-world ETF price data
 - Simulate and visualize the Efficient Frontier (with and without short sales)
 - Calculate Global Minimum Variance Portfolio (GMVP)
 - Estimate investor risk aversion via an interactive questionnaire
@@ -79,13 +79,13 @@ robo-adviser/
 
 This module allows the user to:
 
-- Upload a CSV file of **daily adjusted closing prices** for 10 bond ETFs.
+- Upload a CSV file of **daily adjusted closing prices** for 10 ETFs.
 - Compute:
   - Annualized return
   - Annualized volatility
   - Sharpe ratio
   - Covariance matrix
-- Simulate 5,000 random portfolios (with and without short selling).
+- Simulate 10,000 random portfolios (with and without short selling).
 - Plot:
   - Random portfolios
   - Efficient Frontier
@@ -127,7 +127,7 @@ This module helps investors find an optimal portfolio that maximizes their utili
 
 ## Sample Data
 
-You can use any historical bond ETF dataset or download from Yahoo Finance. Example tickers:
+You can use any historical ETF dataset or download from Yahoo Finance. Example tickers:
 
 - AGG, BND, TLT, IEF, SHY, LQD, HYG, TIP, MUB, EMB
 
