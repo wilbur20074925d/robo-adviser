@@ -5,16 +5,25 @@ import matplotlib.pyplot as plt
 import scipy.optimize as opt 
 import plotly.express as px
 import plotly.graph_objects as go
+import yfinance as yf
+
 st.set_page_config(page_title="Optimal Portfolio Based on Risk Aversion", layout="wide")
 st.title(" Optimal Portfolio Calculator - Risk Aversion-Based")
-def simulate_portfolios(mean_returns, cov_matrix, n_portfolios=5000, allow_short=False):
+def simulate_portfolios(mean_returns, cov_matrix, n_portfolios=10000, allow_short=False):
     np.random.seed(42)
     n_assets = len(mean_returns)
     results = np.zeros((3, n_portfolios))
 
     for i in range(n_portfolios):
-        weights = np.random.randn(n_assets) if allow_short else np.random.rand(n_assets)
-        weights /= np.sum(np.abs(weights)) if allow_short else np.sum(weights)
+        if allow_short:
+            w = np.random.randn(n_assets)
+            # Make sure the sum of the weight is not 0, and all weight < 200%
+            while abs(w.sum()) < 1e-6 or np.sum(np.abs(w / w.sum())) > 2 :
+                w = np.random.randn(n_assets)
+            weights = w / w.sum()
+        else:
+            w = np.random.rand(n_assets)
+            weights = w / w.sum()
         port_return = np.dot(weights, mean_returns)
         port_std = np.sqrt(weights.T @ cov_matrix @ weights)
         results[0, i] = port_std
@@ -48,6 +57,77 @@ Please adjust your risk aversion level using the slider below to see how your op
 # Initialize session state to store history
 if 'history' not in st.session_state:
     st.session_state.history = []
+
+if 'entries' not in st.session_state:
+    st.session_state.entries = ['']
+if 'calc_result' not in st.session_state:
+    st.session_state.calc_result = None
+if 'use_input' not in st.session_state:
+    st.session_state.use_input = False
+
+def add_entry():
+    st.session_state.entries.append('')
+
+def remove_entry(idx):
+    st.session_state.entries.pop(idx)
+    
+# Loop through each etf and download 10 years of monthly adjusted close prices
+def fetch_tickers(etf_tickers): 
+    etf_data = {}
+    for ticker in etf_tickers:
+        print(f"Fetching data for {ticker}...")
+        try:
+            data = yf.Ticker(ticker).history(period="10y", interval="1d")
+            if not data.empty:
+                etf_price = data['Close']
+                nav = etf_price / etf_price.iloc[0]
+                etf_data[ticker] = nav
+            else:
+                print(f"No data returned for {ticker}. Skipping.")
+        except Exception as e:
+            print(f"Failed to get data for {ticker}. Reason: {e}")
+            
+    # Combine into a single DataFrame
+    etf_prices_df = pd.DataFrame(etf_data)
+
+    # Drop rows with any missing values (optional)
+    etf_prices_df.dropna(inplace=True)
+
+    return etf_prices_df
+
+def calculate():
+    etf_tickers = [st.session_state[f"entry_{i}"].strip() for i in range(len(st.session_state.entries))]
+    
+    if len(etf_tickers) == 0 or any(t == "" for t in etf_tickers):
+        st.error("ETF Code cannot be empty!")
+        return
+    
+    df = fetch_tickers(etf_tickers)
+    st.success(f"Data Fetched")
+    st.session_state.calc_result = df
+    st.session_state.use_input = True
+
+st.title("Input Your ETFs")
+
+st.markdown("---")
+
+for i, val in enumerate(st.session_state.entries):
+    col1, col2 = st.columns([6, 1], gap="small")
+    with col1:
+        st.text_input(f"ETF {i+1}", key=f"entry_{i}", value=val)
+    with col2:
+        st.button("Remove", key=f"del_{i}", on_click=remove_entry, args=(i,))
+
+for i in range(len(st.session_state.entries)):
+    st.session_state.entries[i] = st.session_state[f"entry_{i}"]
+
+col1, col2 = st.columns([1, 6])
+with col1:
+    st.button("Add One More", on_click=add_entry)
+with col2:
+    st.button("Fetch Data", on_click=calculate)
+
+st.markdown("---")
 
 # Upload price data
 uploaded_file = st.file_uploader("Upload ETF daily price CSV (same format as Part 1)", type=["csv"])
@@ -92,12 +172,15 @@ st.markdown(f"### Estimated Risk Aversion Coefficient: **A = {A}**")
 st.markdown(f"### Risk Profile: **{profile}**")
 
 # Button to trigger calculation
-if uploaded_file and st.button("Calculate Optimal Portfolio"):
+if (uploaded_file or st.session_state.use_input) and st.button("Calculate Optimal Portfolio") :
     # Load and clean data
-    df = pd.read_csv(uploaded_file, parse_dates=["Date"], index_col="Date")
-    df = df.dropna()
-
-    st.success("File uploaded and processed successfully.")
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file, parse_dates=["Date"], index_col="Date")
+        df = df.dropna()
+        st.success("File uploaded successfully.")
+    else:
+        df = st.session_state.calc_result
+        st.success("Data fetched successfully.")
 
     st.subheader("Sample of Uploaded Data")
     st.dataframe(df.head())
@@ -123,7 +206,7 @@ if uploaded_file and st.button("Calculate Optimal Portfolio"):
     constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
 
     # Bounds: allow/disallow short sales
-    bounds = [(-0.3, 0.3)] * n_assets if allow_short else [(0, 0.3)] * n_assets
+    bounds = [(-2 / n_assets, 2 / n_assets)] * n_assets if allow_short else [(0, 2 / n_assets)] * n_assets
 
     # Initial guess: equal weights
     init_guess = np.ones(n_assets) / n_assets
