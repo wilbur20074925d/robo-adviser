@@ -203,10 +203,11 @@ if (uploaded_file or st.session_state.use_input) and st.button("Calculate Optima
         return -(port_return - 0.5 * A * port_var)  # minimize negative utility
 
     # Constraints: sum(weights) == 1
-    constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
+    constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1},
+                   {'type': 'ineq', 'fun': lambda w: 2 - np.sum(np.abs(w))})
 
     # Bounds: allow/disallow short sales
-    bounds = [(-2 / n_assets, 2 / n_assets)] * n_assets if allow_short else [(0, 2 / n_assets)] * n_assets
+    bounds = [(-0.5, 0.5)] * n_assets if allow_short else [(0, 0.5)] * n_assets
 
     # Initial guess: equal weights
     init_guess = np.ones(n_assets) / n_assets
